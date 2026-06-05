@@ -1,7 +1,7 @@
 # config.py
 
 # Model Settings
-MODEL_NAME = "gemini-1.5-flash"
+MODEL_NAME = "gemini-3.5-flash"
 BATCH_SIZE = 15
 CONFIDENCE_THRESHOLD = 0.85
 
