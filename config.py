@@ -2,7 +2,7 @@
 
 # Model Settings
 MODEL_NAME = "gemini-2.5-flash"
-BATCH_SIZE = 15
+BATCH_SIZE = 25
 CONFIDENCE_THRESHOLD = 0.85
 
 # Expected Excel Columns (For Validation)

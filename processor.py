@@ -66,6 +66,6 @@ def process_dataframe(df, api_key, validator_name, progress_bar, status_text):
                 df.at[idx, 'Requires_Manual_Review'] = True
 
         progress_bar.progress(min((i + BATCH_SIZE) / total_rows, 1.0))
-        time.sleep(4) # Rate limit safety for Gemini Free Tier
+        time.sleep(15) # Rate limit safety for Gemini Free Tier
 
     return df
