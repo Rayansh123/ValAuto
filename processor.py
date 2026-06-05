@@ -18,7 +18,13 @@ def initialize_gemini(api_key):
 def process_dataframe(df, api_key, validator_name, progress_bar, status_text):
     model = initialize_gemini(api_key)
     
-    # Ensure our required output columns exist if not pre-filled
+    # --- THE FIX: Force specific columns to accept text/strings ---
+    # Prevents 'float64' errors if the uploaded Excel columns are completely empty.
+    columns_to_force_string = ['pronunciation_guide', 'code_mixed', 'corrections', 'validated_by', 'speaker_gender']
+    for col in columns_to_force_string:
+        if col in df.columns:
+            df[col] = df[col].astype('object')
+            
     if 'Requires_Manual_Review' not in df.columns:
         df['Requires_Manual_Review'] = False
 
@@ -56,7 +62,6 @@ def process_dataframe(df, api_key, validator_name, progress_bar, status_text):
 
         except Exception as e:
             st.error(f"Error on batch {i}: {e}")
-            # Flag the whole batch for manual review on API failure
             for idx in chunk.index:
                 df.at[idx, 'Requires_Manual_Review'] = True
 
