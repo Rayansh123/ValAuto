@@ -26,6 +26,10 @@ def process_dataframe(df, api_key, validator_name, progress_bar, status_text):
             
     if 'Requires_Manual_Review' not in df.columns:
         df['Requires_Manual_Review'] = False
+        
+    # NEW: Add a column to track the exact AI score
+    if 'AI_Confidence_Score' not in df.columns:
+        df['AI_Confidence_Score'] = 0.0
 
     total_rows = len(df)
 
@@ -37,18 +41,28 @@ def process_dataframe(df, api_key, validator_name, progress_bar, status_text):
         
         try:
             response = model.generate_content(json.dumps(payload))
-            batch_results = json.loads(response.text)
+            
+            # --- THE FIX: Clean the JSON string to prevent Decoder Errors ---
+            raw_text = response.text.strip()
+            if raw_text.startswith("```"):
+                # Remove markdown backticks and 'json' keyword
+                raw_text = raw_text.strip("`").removeprefix("json").strip()
+                
+            batch_results = json.loads(raw_text)
             
             for res in batch_results:
                 idx = df.index[df['sentence_id'] == res['row_id']].tolist()[0]
                 
-                if res.get('confidence_score', 0) >= CONFIDENCE_THRESHOLD:
+                # Extract and Save the Confidence Score
+                score = float(res.get('confidence_score', 0.0))
+                df.at[idx, 'AI_Confidence_Score'] = score
+                
+                if score >= CONFIDENCE_THRESHOLD:
                     
-                    # --- PYTHON BUILDS THE PRONUNCIATION GUIDE ---
+                    # 1. Pronunciation Guide Replacement
                     new_text = str(df.at[idx, 'text'])
                     loan_words = res.get('loan_words_found', [])
                     
-                    # Python surgically replaces the words using the LLM's mapping
                     if loan_words:
                         for word_pair in loan_words:
                             dev = word_pair.get('devanagari', '')
@@ -61,7 +75,7 @@ def process_dataframe(df, api_key, validator_name, progress_bar, status_text):
                         
                     df.at[idx, 'pronunciation_guide'] = new_text
 
-                    # --- PYTHON BUILDS THE CORRECTIONS STRING ---
+                    # 2. Corrections String
                     mismatches = []
                     vals = res.get('validations', {})
                     if vals.get('domain_mismatch'): mismatches.append("Domain: mismatch")
@@ -70,7 +84,7 @@ def process_dataframe(df, api_key, validator_name, progress_bar, status_text):
                     
                     df.at[idx, 'corrections'] = ", ".join(mismatches)
                     
-                    # Name and Gender
+                    # 3. Validation and Gender
                     df.at[idx, 'validated_by'] = validator_name
                     if res.get('gender_override'):
                         df.at[idx, 'speaker_gender'] = res['gender_override']
@@ -78,9 +92,10 @@ def process_dataframe(df, api_key, validator_name, progress_bar, status_text):
                     df.at[idx, 'Requires_Manual_Review'] = True
 
         except Exception as e:
-            st.error(f"Error on batch {i}: {e}")
+            st.error(f"Error on batch {i}: JSON parse failure. {e}")
             for idx in chunk.index:
                 df.at[idx, 'Requires_Manual_Review'] = True
+                df.at[idx, 'AI_Confidence_Score'] = -1.0 # -1 means API/JSON error
 
         progress_bar.progress(min((i + BATCH_SIZE) / total_rows, 1.0))
         time.sleep(15) 
