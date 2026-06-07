@@ -1,8 +1,8 @@
 # config.py
 
 # Model Settings
-MODEL_NAME = "gemini-2.5-flash"
-BATCH_SIZE = 25
+MODEL_NAME = "gemini-1.5-pro"
+BATCH_SIZE = 10
 CONFIDENCE_THRESHOLD = 0.85
 
 # Expected Excel Columns (For Validation)
