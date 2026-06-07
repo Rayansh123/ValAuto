@@ -1,7 +1,7 @@
 # config.py
 
 # Model Settings
-MODEL_NAME = "gemini-1.5-pro"
+MODEL_NAME = "gemini-2.5-pro"
 BATCH_SIZE = 10
 CONFIDENCE_THRESHOLD = 0.85
 
