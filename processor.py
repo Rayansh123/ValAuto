@@ -2,6 +2,7 @@
 import pandas as pd
 import json
 import time
+import re
 import google.generativeai as genai
 import streamlit as st
 from prompts import SYSTEM_INSTRUCTION
@@ -31,8 +32,6 @@ def process_dataframe(df, api_key, validator_name, progress_bar, status_text):
     if 'AI_Confidence_Score' not in df.columns:
         df['AI_Confidence_Score'] = 0.0
 
-    # ... (Keep everything above this exactly the same) ...
-
     total_rows = len(df)
 
     for i in range(0, total_rows, BATCH_SIZE):
@@ -48,15 +47,19 @@ def process_dataframe(df, api_key, validator_name, progress_bar, status_text):
         for attempt in range(max_retries):
             try:
                 response = model.generate_content(json.dumps(payload))
+                raw_text = response.text
                 
-                # Clean the JSON string
-                raw_text = response.text.strip()
-                if raw_text.startswith("```"):
-                    raw_text = raw_text.strip("`").removeprefix("json").strip()
-                    
-                batch_results = json.loads(raw_text)
-                success = True
-                break # Exit the retry loop if successful!
+                # --- THE BULLETPROOF FIX: Regex JSON Extraction ---
+                # This searches for the array brackets [] and ignores everything outside them
+                match = re.search(r'\[.*\]', raw_text, re.DOTALL)
+                
+                if match:
+                    json_str = match.group(0)
+                    batch_results = json.loads(json_str)
+                    success = True
+                    break # Exit the retry loop if successful!
+                else:
+                    raise ValueError("No JSON array found in the AI response.")
                 
             except Exception as e:
                 error_msg = str(e)
